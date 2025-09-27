@@ -3,13 +3,13 @@ import { PlusCircle, DollarSign, TrendingUp, Calendar, Download, Trash2, Edit3, 
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/api';
 import expensesPlaceholder from './recentExpenses';
-import awsConfig from './aws-config';
+//import awsConfig from './aws-config';
 import * as queries from './graphql/queries.js';
 import * as mutations from './graphql/mutations.js';
 import './App.css';
 
 // Initialize Amplify and API client
-Amplify.configure(awsConfig);
+//Amplify.configure(awsConfig); //will be temporarily remove for local testing
 const client = generateClient();
 
 console.log('Sample Data:', expensesPlaceholder.expenses); // Debug log moved after imports
@@ -411,18 +411,6 @@ const CloudCentsBudgetTracker = () => {
                 gap: '8px',
                 fontSize: '14px'
               }}>
-                {syncStatus === 'loading' || syncStatus === 'syncing' ? (
-                  <RefreshCw size={16} className="icon-blue" style={{ animation: 'spin 1s linear infinite' }} />
-                ) : syncStatus === 'success' ? (
-                  <Cloud size={16} className="icon-green" />
-                ) : syncStatus === 'error' ? (
-                  <CloudOff size={16} style={{ color: '#ef4444' }} />
-                ) : (
-                  <Cloud size={16} style={{ color: '#9ca3af' }} />
-                )}
-                <span style={{ color: '#6b7280' }}>
-                  {isLoading ? 'Loading...' : isSyncing ? 'Syncing...' : 'AWS DynamoDB'}
-                </span>
                 {lastSyncTime && (
                   <div style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px' }}>
                     Last sync: {lastSyncTime.toLocaleTimeString()}
@@ -435,10 +423,6 @@ const CloudCentsBudgetTracker = () => {
             <div className="auth-controls">
               {isAuthenticated ? (
                 <div className="auth-info">
-                  <span className="user-status">
-                    <User size={16} />
-                    Admin
-                  </span>
                   <button
                     onClick={handleLogout}
                     className="logout-button"
@@ -449,15 +433,11 @@ const CloudCentsBudgetTracker = () => {
                 </div>
               ) : (
                 <div className="guest-info">
-                  <span className="user-status guest">
-                    <User size={16} />
-                    Guest Mode
-                  </span>
                   <button
                     onClick={showLogin}
                     className="login-trigger-button"
                   >
-                    Admin Login
+                    Login
                   </button>
                 </div>
               )}
@@ -469,7 +449,7 @@ const CloudCentsBudgetTracker = () => {
         {!isAuthenticated && (
           <div className="guest-notice">
             <Lock size={20} />
-            <span>You are viewing in <strong>Guest Mode</strong>. Login as admin to manage expenses and sync with AWS DynamoDB.</span>
+            <span>You must login as <strong>Admin</strong> to modify.</span>
           </div>
         )}
 
@@ -615,19 +595,6 @@ const CloudCentsBudgetTracker = () => {
                       >
                         <Download size={16} />
                         Export CSV
-                      </button>
-                      <button
-                        onClick={loadFromAWS}
-                        className="sync-button"
-                        disabled={isLoading || isSyncing}
-                        style={{ opacity: (isLoading || isSyncing) ? 0.6 : 1 }}
-                      >
-                        {isLoading ? (
-                          <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                        ) : (
-                          <Cloud size={16} />
-                        )}
-                        Refresh from AWS
                       </button>
                     </>
                   ) : (
