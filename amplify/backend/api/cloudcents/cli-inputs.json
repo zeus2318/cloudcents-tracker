@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "serviceConfiguration": {
+    "apiName": "cloudcents",
+    "serviceName": "AppSync",
+    "defaultAuthType": {
+      "mode": "API_KEY",
+      "expirationTime": 100,
+      "apiKeyExpirationDate": "2026-01-05T07:28:35.674Z",
+      "keyDescription": ""
+    }
+  }
+}

@@ -11,6 +11,8 @@
     "aws-amplify": "^6.15.6",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.12.2",
+    "graphql": "^16.11.0",
+    "graphql-request": "^7.2.0",
     "lucide-react": "^0.544.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

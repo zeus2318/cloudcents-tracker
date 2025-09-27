@@ -1,0 +1,13 @@
+# This input sets up a default auth rule for all models
+input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
+
+type Expense @model {
+  id: ID!
+  description: String!
+  amount: Float!
+  category: String!
+  date: AWSDate!
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+

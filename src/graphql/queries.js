@@ -1,21 +1,27 @@
-export const listExpenses = `
-  query ListExpenses {
-    listExpenses {
-      items {
-        id
-        description
-        amount
-        category
-        date
-        createdAt
-      }
+/* eslint-disable */
+// this is an auto generated file. This will be overwritten
+
+export const getExpense = /* GraphQL */ `
+  query GetExpense($id: ID!) {
+    getExpense(id: $id) {
+      id
+      description
+      amount
+      category
+      date
+      createdAt
+      updatedAt
+      __typename
     }
   }
 `;
-
-export const getExpensesByCategory = `
-  query GetExpensesByCategory($category: String!) {
-    getExpensesByCategory(category: $category) {
+export const listExpenses = /* GraphQL */ `
+  query ListExpenses(
+    $filter: ModelExpenseFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listExpenses(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
         description
@@ -23,7 +29,11 @@ export const getExpensesByCategory = `
         category
         date
         createdAt
+        updatedAt
+        __typename
       }
+      nextToken
+      __typename
     }
   }
 `;

@@ -2,23 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { PlusCircle, DollarSign, TrendingUp, Calendar, Download, Trash2, Edit3, User, LogOut, Lock, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/api';
-import expensesPlaceholder from './recentExpenses';
-//import awsConfig from './aws-config';
+import awsconfig from './aws-exports.js'; // or ./aws-exports.js if you prefer
 import * as queries from './graphql/queries.js';
 import * as mutations from './graphql/mutations.js';
 import './App.css';
 
 // Initialize Amplify and API client
-//Amplify.configure(awsConfig); //will be temporarily remove for local testing
+Amplify.configure(awsconfig); //will be temporarily remove for local testing
 const client = generateClient();
 
-console.log('Sample Data:', expensesPlaceholder.expenses); // Debug log moved after imports
-
 const CloudCentsBudgetTracker = () => {
-  const [expenses, setExpenses] = useState(() => {
-    console.log('Setting initial expenses:', expensesPlaceholder.expenses); // Debug log
-    return expensesPlaceholder.expenses;
-  });
+  const [expenses, setExpenses] = useState([]);
   const [newExpense, setNewExpense] = useState({
     description: '',
     amount: '',
@@ -43,6 +37,12 @@ const CloudCentsBudgetTracker = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'loading', 'syncing', 'success', 'error'
+  
+  // Form validation and enhancement states
+  const [formErrors, setFormErrors] = useState({});
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Admin credentials (hardcoded)
   const adminCredentials = {
@@ -79,21 +79,29 @@ const CloudCentsBudgetTracker = () => {
     localStorage.setItem('cloudcents_expenses', JSON.stringify(expenses));
   }, [expenses]);
 
-  // Load expenses from AWS DynamoDB
+  // FIXED: Load expenses from AWS DynamoDB
   const loadFromAWS = async () => {
     setIsLoading(true);
     setSyncStatus('loading');
     
     try {
+      console.log('Loading expenses from DynamoDB...');
+      
       const response = await client.graphql({
         query: queries.listExpenses
       });
+      
+      console.log('DynamoDB response:', response);
+      
       const awsExpenses = response.data.listExpenses.items;
       
+      // FIXED: Actually set the expenses instead of clearing them
       if (awsExpenses && awsExpenses.length > 0) {
+        console.log('Found expenses in DynamoDB:', awsExpenses.length);
         setExpenses(awsExpenses);
       } else {
-        setExpenses(expensesPlaceholder.expenses);
+        console.log('No expenses found in DynamoDB');
+        setExpenses([]);
       }
       
       setSyncStatus('success');
@@ -104,10 +112,97 @@ const CloudCentsBudgetTracker = () => {
     } catch (error) {
       console.error('Error loading from AWS:', error);
       setSyncStatus('error');
-      setExpenses(expensesPlaceholder.expenses);
+      
+      // Fallback to localStorage if AWS fails
+      const savedExpenses = localStorage.getItem('cloudcents_expenses');
+      if (savedExpenses) {
+        try {
+          setExpenses(JSON.parse(savedExpenses));
+        } catch (parseError) {
+          console.error('Error parsing saved expenses:', parseError);
+          setExpenses([]);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Form validation functions
+  const validateExpenseForm = () => {
+    const errors = {};
+    
+    if (!newExpense.description.trim()) {
+      errors.description = 'Description is required';
+    }
+    
+    if (!newExpense.amount) {
+      errors.amount = 'Amount is required';
+    } else {
+      const amount = parseFloat(newExpense.amount);
+      if (isNaN(amount) || amount <= 0) {
+        errors.amount = 'Amount must be greater than 0';
+      }
+      if (amount > 100000) {
+        errors.amount = 'Amount seems to large. Please verify.';
+      }
+    }
+    
+    if (!newExpense.date) {
+      errors.date = 'Date is required';
+    } else if (new Date(newExpense.date) > new Date()) {
+      errors.date = 'Date cannot be in the future';
+    }
+    
+    return errors;
+  };
+
+  // Auto-complete suggestions
+  const getDescriptionSuggestions = (input) => {
+    const commonExpenses = {
+      supplies: [
+        'Nail polish bottles',
+        'Acrylic powder',
+        'Nail files and buffers',
+        'UV/LED lamp bulbs',
+        'Cuticle oil',
+        'Base and top coat',
+        'Nail art supplies',
+        'Cotton pads and swabs'
+      ],
+      equipment: [
+        'UV/LED nail lamp',
+        'Nail drill machine',
+        'Sterilizer equipment',
+        'Manicure table',
+        'Client chairs',
+        'Storage cabinets'
+      ],
+      marketing: [
+        'Social media ads',
+        'Business cards',
+        'Flyers and posters',
+        'Website maintenance',
+        'Photography session'
+      ],
+      utilities: [
+        'Electricity bill',
+        'Water bill',
+        'Internet service',
+        'Phone service'
+      ],
+      maintenance: [
+        'Equipment repair',
+        'Cleaning supplies',
+        'Air conditioning service',
+        'Plumbing repairs'
+      ]
+    };
+
+    const categoryExpenses = commonExpenses[newExpense.category] || [];
+    return categoryExpenses.filter(expense => 
+      expense.toLowerCase().includes(input.toLowerCase())
+    );
   };
 
   // Handle login
@@ -145,77 +240,114 @@ const CloudCentsBudgetTracker = () => {
     setLoginForm({ username: '', password: '' });
   };
 
-  const addExpense = async () => {
-    if (!newExpense.description || !newExpense.amount) return;
-    
-    const expense = {
-      id: Date.now().toString(),
-      ...newExpense,
-      amount: parseFloat(newExpense.amount),
-      createdAt: new Date().toISOString()
-    };
-    
-    if (isAuthenticated) {
-      try {
-        await client.graphql({
-          query: mutations.createExpense,
-          variables: { input: expense }
-        });
-        await loadFromAWS();
-      } catch (error) {
-        console.error('Error adding expense to AWS:', error);
-        setExpenses([expense, ...expenses]);
-      }
-    } else {
-      setExpenses([expense, ...expenses]);
-    }
-    
+  // Form utility functions
+  const clearForm = () => {
     setNewExpense({
       description: '',
       amount: '',
       category: 'supplies',
       date: new Date().toISOString().split('T')[0]
     });
+    setFormErrors({});
+    setShowSuggestions(false);
   };
 
-  const updateExpense = async (id, updatedExpense) => {
-    if (isAuthenticated) {
-      try {
-        await client.graphql({
-          query: mutations.updateExpense,
-          variables: { id, input: updatedExpense }
-        });
-        await loadFromAWS();
-      } catch (error) {
-        console.error('Error updating expense in AWS:', error);
-        setExpenses(expenses.map(expense => 
-          expense.id === id ? { ...expense, ...updatedExpense } : expense
-        ));
-      }
-    } else {
-      setExpenses(expenses.map(expense => 
-        expense.id === id ? { ...expense, ...updatedExpense } : expense
-      ));
+  const copyLastExpense = () => {
+    if (expenses.length > 0) {
+      const lastExpense = expenses[0];
+      setNewExpense({
+        description: lastExpense.description,
+        amount: lastExpense.amount.toString(),
+        category: lastExpense.category,
+        date: new Date().toISOString().split('T')[0] // Use today's date
+      });
     }
-    setEditingId(null);
   };
 
-  const deleteExpense = async (id) => {
-    if (isAuthenticated) {
-      try {
-        await client.graphql({
-          query: mutations.deleteExpense,
-          variables: { id }
-        });
-        await loadFromAWS();
-      } catch (error) {
-        console.error('Error deleting expense from AWS:', error);
-        setExpenses(expenses.filter(expense => expense.id !== id));
-      }
-    } else {
-      setExpenses(expenses.filter(expense => expense.id !== id));
-    }
+  const setQuickAmount = (amount) => {
+    setNewExpense({...newExpense, amount: amount.toString()});
   };
+
+  // ENHANCED: Add expense with proper DynamoDB integration
+const addExpense = async () => {
+  const errors = validateExpenseForm();
+  setFormErrors(errors);
+  if (Object.keys(errors).length > 0) return;
+
+  // Only include schema fields
+  const expenseData = {
+    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    description: newExpense.description.trim(),
+    amount: parseFloat(newExpense.amount),
+    category: newExpense.category,
+    date: newExpense.date,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  try {
+    if (isAuthenticated) {
+      await client.graphql({
+        query: mutations.createExpense,
+        variables: { input: expenseData }
+      });
+      await loadFromAWS();
+    } else {
+      setExpenses([expenseData, ...expenses]);
+    }
+    clearForm();
+  } catch (error) {
+    console.error("Error adding expense:", error);
+    setExpenses([expenseData, ...expenses]); // fallback
+  }
+};
+
+
+const updateExpense = async (id, updatedExpense) => {
+  const expenseInput = {
+    id,
+    description: updatedExpense.description,
+    amount: parseFloat(updatedExpense.amount),
+    category: updatedExpense.category,
+    date: updatedExpense.date,
+    updatedAt: new Date().toISOString()
+  };
+
+  try {
+    if (isAuthenticated) {
+      await client.graphql({
+        query: mutations.updateExpense,
+        variables: { input: expenseInput }
+      });
+      await loadFromAWS();
+    } else {
+      setExpenses(expenses.map(exp => exp.id === id ? { ...exp, ...expenseInput } : exp));
+    }
+  } catch (error) {
+    console.error("Error updating expense:", error);
+    setExpenses(expenses.map(exp => exp.id === id ? { ...exp, ...expenseInput } : exp));
+  }
+  setEditingId(null);
+};
+
+
+const deleteExpense = async (id) => {
+  try {
+    if (isAuthenticated) {
+      await client.graphql({
+        query: mutations.deleteExpense,
+        variables: { input: { id } }
+      });
+      await loadFromAWS();
+    } else {
+      setExpenses(expenses.filter(exp => exp.id !== id));
+    }
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    setExpenses(expenses.filter(exp => exp.id !== id));
+  }
+};
+
 
   const getFilteredExpenses = () => {
     let filtered = [...expenses];
@@ -292,7 +424,7 @@ const CloudCentsBudgetTracker = () => {
   const categorySummary = getCategorySummary();
   const totalExpenses = getTotalExpenses();
 
-  // Add this state for editing
+  // Edit expense states and functions
   const [editExpense, setEditExpense] = useState({
     description: '',
     amount: '',
@@ -300,7 +432,6 @@ const CloudCentsBudgetTracker = () => {
     date: ''
   });
 
-  // Add these handler functions after your existing functions
   const handleEdit = (expense) => {
     setEditingId(expense.id);
     setEditExpense({
@@ -320,6 +451,14 @@ const CloudCentsBudgetTracker = () => {
     };
     
     updateExpense(editingId, updatedExpense);
+  };
+
+  // Handle Enter key submission
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addExpense();
+    }
   };
 
   return (
@@ -411,6 +550,10 @@ const CloudCentsBudgetTracker = () => {
                 gap: '8px',
                 fontSize: '14px'
               }}>
+                {syncStatus === 'loading' && <RefreshCw className="spin" size={16} />}
+                {syncStatus === 'success' && <Cloud size={16} color="#10b981" />}
+                {syncStatus === 'error' && <CloudOff size={16} color="#ef4444" />}
+                
                 {lastSyncTime && (
                   <div style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px' }}>
                     Last sync: {lastSyncTime.toLocaleTimeString()}
@@ -487,34 +630,85 @@ const CloudCentsBudgetTracker = () => {
           </div>
         </div>
 
-        {/* Controls */}
+        {/* Enhanced Add Expense Form */}
         {isAuthenticated && (
           <div className="controls-section">
             <div className="form-row">
-              {/* Add Expense Form */}
+              {/* Description with auto-complete */}
               <div className="form-group flex-grow">
-                <label className="form-label">Description</label>
-                <input
-                  type="text"
-                  value={newExpense.description}
-                  onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
-                  placeholder="e.g., Nail polish supplies"
-                  className="form-input"
-                />
+                <label className="form-label">
+                  Description
+                  {formErrors.description && <span className="error-text"> *</span>}
+                </label>
+                <div className="autocomplete-wrapper">
+                  <input
+                    type="text"
+                    value={newExpense.description}
+                    onChange={(e) => {
+                      setNewExpense({...newExpense, description: e.target.value});
+                      const suggestions = getDescriptionSuggestions(e.target.value);
+                      setSuggestions(suggestions);
+                      setShowSuggestions(suggestions.length > 0 && e.target.value.length > 0);
+                      if (formErrors.description) {
+                        setFormErrors({...formErrors, description: ''});
+                      }
+                    }}
+                    onKeyPress={handleKeyPress}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    placeholder="e.g., Nail polish supplies"
+                    className={`form-input ${formErrors.description ? 'error' : ''}`}
+                  />
+                  
+                  {/* Auto-complete dropdown */}
+                  {showSuggestions && (
+                    <div className="suggestions-dropdown">
+                      {suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="suggestion-item"
+                          onClick={() => {
+                            setNewExpense({...newExpense, description: suggestion});
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          {suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {formErrors.description && (
+                  <span className="error-message">{formErrors.description}</span>
+                )}
               </div>
               
+              {/* Amount input */}
               <div className="form-group amount-input">
-                <label className="form-label">Amount (₱)</label>
+                <label className="form-label">
+                  Amount (₱)
+                  {formErrors.amount && <span className="error-text"> *</span>}
+                </label>
                 <input
                   type="number"
                   value={newExpense.amount}
-                  onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
+                  onChange={(e) => {
+                    setNewExpense({...newExpense, amount: e.target.value});
+                    if (formErrors.amount) {
+                      setFormErrors({...formErrors, amount: ''});
+                    }
+                  }}
+                  onKeyPress={handleKeyPress}
                   placeholder="0.00"
                   step="0.01"
-                  className="form-input"
+                  className={`form-input ${formErrors.amount ? 'error' : ''}`}
                 />
+                
+                {formErrors.amount && (
+                  <span className="error-message">{formErrors.amount}</span>
+                )}
               </div>
               
+              {/* Category selection */}
               <div className="form-group category-input">
                 <label className="form-label">Category</label>
                 <select
@@ -528,25 +722,51 @@ const CloudCentsBudgetTracker = () => {
                 </select>
               </div>
               
+              {/* Date input */}
               <div className="form-group date-input">
-                <label className="form-label">Date</label>
+                <label className="form-label">
+                  Date
+                  {formErrors.date && <span className="error-text"> *</span>}
+                </label>
                 <input
                   type="date"
                   value={newExpense.date}
-                  onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
-                  className="form-input"
+                  onChange={(e) => {
+                    setNewExpense({...newExpense, date: e.target.value});
+                    if (formErrors.date) {
+                      setFormErrors({...formErrors, date: ''});
+                    }
+                  }}
+                  max={new Date().toISOString().split('T')[0]}
+                  className={`form-input ${formErrors.date ? 'error' : ''}`}
                 />
+                
+                {formErrors.date && (
+                  <span className="error-message">{formErrors.date}</span>
+                )}
               </div>
               
-              <button
-                onClick={addExpense}
-                className="add-button"
-                disabled={isSyncing}
-                style={{ opacity: isSyncing ? 0.6 : 1 }}
-              >
-                <PlusCircle size={20} />
-                Add
-              </button>
+              {/* Enhanced submit button */}
+              <div className="submit-buttons">
+                <button
+                  onClick={addExpense}
+                  className="add-button"
+                  disabled={isSubmitting || isSyncing}
+                  style={{ opacity: (isSubmitting || isSyncing) ? 0.6 : 1 }}
+                >
+                  <PlusCircle size={20} />
+                  {isSubmitting ? 'Adding...' : 'Add to DynamoDB'}
+                </button>
+              </div>
+            </div>
+            
+            {/* Form summary */}
+            <div className="form-summary">
+              {syncStatus === 'error' && (
+                <span style={{ color: '#ef4444', marginLeft: '20px' }}>
+                  ⚠️ Sync failed - data saved locally
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -596,6 +816,14 @@ const CloudCentsBudgetTracker = () => {
                         <Download size={16} />
                         Export CSV
                       </button>
+                      <button
+                        onClick={loadFromAWS}
+                        className="sync-button"
+                        disabled={isSyncing}
+                      >
+                        <RefreshCw size={16} className={isSyncing ? 'spin' : ''} />
+                        {isSyncing ? 'Syncing...' : 'Sync AWS'}
+                      </button>
                     </>
                   ) : (
                     <div className="guest-actions">
@@ -623,7 +851,15 @@ const CloudCentsBudgetTracker = () => {
           {/* Expense List */}
           <div className="expense-list-section">
             <div className="expense-list-card">
-              <h3 className="section-title">Recent Expenses</h3>
+              <div className="expense-list-header">
+                <h3 className="section-title">Recent Expenses</h3>
+                {isLoading && (
+                  <div className="loading-indicator">
+                    <RefreshCw size={16} className="spin" />
+                    Loading from DynamoDB...
+                  </div>
+                )}
+              </div>
               
               {filteredExpenses && filteredExpenses.length > 0 ? (
                 <div className="expense-list">
@@ -637,6 +873,11 @@ const CloudCentsBudgetTracker = () => {
                               {categories[expense.category]}
                             </span>
                             <span className="expense-date">{expense.date}</span>
+                            {expense.createdAt && (
+                              <span className="expense-timestamp">
+                                Added: {new Date(expense.createdAt).toLocaleDateString()}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -672,9 +913,13 @@ const CloudCentsBudgetTracker = () => {
               ) : (
                 <div className="empty-state">
                   <DollarSign size={48} className="empty-icon" />
-                  <p className="empty-title">No expenses recorded yet</p>
+                  <p className="empty-title">
+                    {isLoading ? 'Loading expenses...' : 'No expenses recorded yet'}
+                  </p>
                   <p className="empty-subtitle">
-                    {isAuthenticated 
+                    {isLoading 
+                      ? 'Fetching data from DynamoDB...'
+                      : isAuthenticated 
                       ? "Start tracking your expenses above" 
                       : "Login as admin to start adding expenses"
                     }
@@ -685,6 +930,7 @@ const CloudCentsBudgetTracker = () => {
           </div>
         </div>
 
+        {/* Edit Modal */}
         {editingId && (
           <div className="edit-modal-overlay">
             <div className="edit-modal-content">
@@ -755,14 +1001,6 @@ const CloudCentsBudgetTracker = () => {
         )}
 
       </div>
-      
-      {/* Add CSS animation for spinning */}
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };
