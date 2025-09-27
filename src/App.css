@@ -1176,55 +1176,34 @@
         
         .expense-list-header {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          margin-bottom: 1rem;
+          justify-content: space-between;
+          padding: 16px;
+          border-bottom: 1px solid #e5e7eb;
         }
         
         .loading-indicator {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 8px;
+          font-size: 14px;
           color: #6b7280;
-          font-size: 14px;
-        }
-        
-        .expense-timestamp {
-          font-size: 11px;
-          color: #9ca3af;
-          margin-left: 0.5rem;
-        }
-        
-        .sync-button {
-          padding: 0.5rem 1rem;
-          border: 1px solid #6366f1;
-          background: white;
-          color: #6366f1;
+          padding: 8px 12px;
+          background-color: #f3f4f6;
           border-radius: 6px;
-          cursor: pointer;
-          font-size: 14px;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          transition: all 0.2s;
-        }
-        
-        .sync-button:hover:not(:disabled) {
-          background: #6366f1;
-          color: white;
-        }
-        
-        .sync-button:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-        
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          margin-left: 16px;
         }
         
         .spin {
           animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
 }

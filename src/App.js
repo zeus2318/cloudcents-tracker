@@ -270,82 +270,85 @@ const CloudCentsBudgetTracker = () => {
 
   // ENHANCED: Add expense with proper DynamoDB integration
 const addExpense = async () => {
-  const errors = validateExpenseForm();
-  setFormErrors(errors);
-  if (Object.keys(errors).length > 0) return;
+    const errors = validateExpenseForm();
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
 
-  // Only include schema fields
-  const expenseData = {
-    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    description: newExpense.description.trim(),
-    amount: parseFloat(newExpense.amount),
-    category: newExpense.category,
-    date: newExpense.date,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+    const expenseData = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        description: newExpense.description.trim(),
+        amount: parseFloat(newExpense.amount),
+        category: newExpense.category,
+        date: newExpense.date,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
 
-  try {
-    if (isAuthenticated) {
-      await client.graphql({
-        query: mutations.createExpense,
-        variables: { input: expenseData }
-      });
-      await loadFromAWS();
-    } else {
-      setExpenses([expenseData, ...expenses]);
+    try {
+        if (isAuthenticated) {
+            await client.graphql({
+                query: mutations.createExpense,
+                variables: { input: expenseData }
+            });
+            await loadFromAWS();
+        } else {
+            setExpenses([expenseData, ...expenses]);
+        }
+        clearForm();
+    } catch (error) {
+        console.error("Error adding expense:", error);
+        setExpenses([expenseData, ...expenses]); // fallback
     }
-    clearForm();
-  } catch (error) {
-    console.error("Error adding expense:", error);
-    setExpenses([expenseData, ...expenses]); // fallback
-  }
 };
 
 
 const updateExpense = async (id, updatedExpense) => {
-  const expenseInput = {
-    id,
-    description: updatedExpense.description,
-    amount: parseFloat(updatedExpense.amount),
-    category: updatedExpense.category,
-    date: updatedExpense.date,
-    updatedAt: new Date().toISOString()
-  };
+    const expenseInput = {
+        id,
+        description: updatedExpense.description,
+        amount: parseFloat(updatedExpense.amount),
+        category: updatedExpense.category,
+        date: updatedExpense.date,
+        updatedAt: new Date().toISOString()
+    };
 
-  try {
-    if (isAuthenticated) {
-      await client.graphql({
-        query: mutations.updateExpense,
-        variables: { input: expenseInput }
-      });
-      await loadFromAWS();
-    } else {
-      setExpenses(expenses.map(exp => exp.id === id ? { ...exp, ...expenseInput } : exp));
+    try {
+        if (isAuthenticated) {
+            await client.graphql({
+                query: mutations.updateExpense,
+                variables: { input: expenseInput }
+            });
+            await loadFromAWS();
+        } else {
+            setExpenses(expenses.map(exp => 
+                exp.id === id ? { ...exp, ...expenseInput } : exp
+            ));
+        }
+    } catch (error) {
+        console.error("Error updating expense:", error);
+        setExpenses(expenses.map(exp => 
+            exp.id === id ? { ...exp, ...expenseInput } : exp
+        ));
     }
-  } catch (error) {
-    console.error("Error updating expense:", error);
-    setExpenses(expenses.map(exp => exp.id === id ? { ...exp, ...expenseInput } : exp));
-  }
-  setEditingId(null);
+    setEditingId(null);
 };
 
 
 const deleteExpense = async (id) => {
-  try {
-    if (isAuthenticated) {
-      await client.graphql({
-        query: mutations.deleteExpense,
-        variables: { input: { id } }
-      });
-      await loadFromAWS();
-    } else {
-      setExpenses(expenses.filter(exp => exp.id !== id));
+    try {
+        if (isAuthenticated) {
+            await client.graphql({
+                query: mutations.deleteExpense,
+                variables: { input: { id } }
+            });
+            await loadFromAWS();
+        } else {
+            setExpenses(expenses.filter(exp => exp.id !== id));
+        }
+    } catch (error) {
+        console.error("Error deleting expense:", error);
+        setExpenses(expenses.filter(exp => exp.id !== id));
     }
-  } catch (error) {
-    console.error("Error deleting expense:", error);
-    setExpenses(expenses.filter(exp => exp.id !== id));
-  }
 };
 
 
