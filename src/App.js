@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, DollarSign, TrendingUp, Calendar, Download, Trash2, Edit3, User, LogOut, Lock, Cloud, CloudOff, RefreshCw } from 'lucide-react';
+import { Amplify } from 'aws-amplify';
+import { generateClient } from 'aws-amplify/api';
 import expensesPlaceholder from './recentExpenses';
+import awsConfig from './aws-config';
+import * as queries from './graphql/queries.js';
+import * as mutations from './graphql/mutations.js';
 import './App.css';
+
+// Initialize Amplify and API client
+Amplify.configure(awsConfig);
+const client = generateClient();
 
 console.log('Sample Data:', expensesPlaceholder.expenses); // Debug log moved after imports
 
@@ -41,12 +50,6 @@ const CloudCentsBudgetTracker = () => {
     password: '3enails2024'
   };
 
-  // AWS API Gateway endpoints - Replace with your actual endpoints
-  const AWS_ENDPOINTS = {
-    save: 'https://your-api-gateway-url/save-expenses',
-    load: 'https://your-api-gateway-url/load-expenses'
-  };
-
   // Categories specific to 3E Nails business
   const categories = {
     supplies: 'Nail Supplies',
@@ -82,74 +85,28 @@ const CloudCentsBudgetTracker = () => {
     setSyncStatus('loading');
     
     try {
-      const response = await fetch(AWS_ENDPOINTS.load, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await client.graphql({
+        query: queries.listExpenses
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setExpenses(data.expenses || []);
-      setSyncStatus('success');
+      const awsExpenses = response.data.listExpenses.items;
       
+      if (awsExpenses && awsExpenses.length > 0) {
+        setExpenses(awsExpenses);
+      } else {
+        setExpenses(expensesPlaceholder.expenses);
+      }
+      
+      setSyncStatus('success');
       const syncTime = new Date();
       setLastSyncTime(syncTime);
       localStorage.setItem('cloudcents_last_sync', syncTime.toISOString());
-      
-      console.log(`Loaded ${data.expenses?.length || 0} expenses from AWS DynamoDB`);
       
     } catch (error) {
       console.error('Error loading from AWS:', error);
       setSyncStatus('error');
-      
-      // Fallback to localStorage
-      const savedExpenses = localStorage.getItem('cloudcents_expenses');
-      if (savedExpenses) {
-        setExpenses(JSON.parse(savedExpenses));
-      }
+      setExpenses(expensesPlaceholder.expenses);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Save expenses to AWS DynamoDB
-  const saveToAWS = async (expensesToSave = expenses) => {
-    setIsSyncing(true);
-    setSyncStatus('syncing');
-    
-    try {
-      const response = await fetch(AWS_ENDPOINTS.save, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(expensesToSave),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setSyncStatus('success');
-      
-      const syncTime = new Date();
-      setLastSyncTime(syncTime);
-      localStorage.setItem('cloudcents_last_sync', syncTime.toISOString());
-      
-      console.log(`Saved ${data.count} expenses to AWS DynamoDB`);
-      
-    } catch (error) {
-      console.error('Error saving to AWS:', error);
-      setSyncStatus('error');
-      throw error;
-    } finally {
-      setIsSyncing(false);
     }
   };
 
@@ -192,22 +149,25 @@ const CloudCentsBudgetTracker = () => {
     if (!newExpense.description || !newExpense.amount) return;
     
     const expense = {
-      id: Date.now(),
+      id: Date.now().toString(),
       ...newExpense,
       amount: parseFloat(newExpense.amount),
       createdAt: new Date().toISOString()
     };
     
-    const updatedExpenses = [expense, ...expenses];
-    setExpenses(updatedExpenses);
-    
-    // Auto-sync to AWS if authenticated
     if (isAuthenticated) {
       try {
-        await saveToAWS(updatedExpenses);
+        await client.graphql({
+          query: mutations.createExpense,
+          variables: { input: expense }
+        });
+        await loadFromAWS();
       } catch (error) {
-        console.error('Failed to sync after adding expense');
+        console.error('Error adding expense to AWS:', error);
+        setExpenses([expense, ...expenses]);
       }
+    } else {
+      setExpenses([expense, ...expenses]);
     }
     
     setNewExpense({
@@ -219,33 +179,41 @@ const CloudCentsBudgetTracker = () => {
   };
 
   const updateExpense = async (id, updatedExpense) => {
-    const updatedExpenses = expenses.map(expense => 
-      expense.id === id ? { ...expense, ...updatedExpense } : expense
-    );
-    setExpenses(updatedExpenses);
-    setEditingId(null);
-    
-    // Auto-sync to AWS if authenticated
     if (isAuthenticated) {
       try {
-        await saveToAWS(updatedExpenses);
+        await client.graphql({
+          query: mutations.updateExpense,
+          variables: { id, input: updatedExpense }
+        });
+        await loadFromAWS();
       } catch (error) {
-        console.error('Failed to sync after updating expense');
+        console.error('Error updating expense in AWS:', error);
+        setExpenses(expenses.map(expense => 
+          expense.id === id ? { ...expense, ...updatedExpense } : expense
+        ));
       }
+    } else {
+      setExpenses(expenses.map(expense => 
+        expense.id === id ? { ...expense, ...updatedExpense } : expense
+      ));
     }
+    setEditingId(null);
   };
 
   const deleteExpense = async (id) => {
-    const updatedExpenses = expenses.filter(expense => expense.id !== id);
-    setExpenses(updatedExpenses);
-    
-    // Auto-sync to AWS if authenticated
     if (isAuthenticated) {
       try {
-        await saveToAWS(updatedExpenses);
+        await client.graphql({
+          query: mutations.deleteExpense,
+          variables: { id }
+        });
+        await loadFromAWS();
       } catch (error) {
-        console.error('Failed to sync after deleting expense');
+        console.error('Error deleting expense from AWS:', error);
+        setExpenses(expenses.filter(expense => expense.id !== id));
       }
+    } else {
+      setExpenses(expenses.filter(expense => expense.id !== id));
     }
   };
 
