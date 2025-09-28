@@ -777,6 +777,48 @@
   background-color: #fef2f2;
 }
 
+/* Loading Indicator Styles */
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+  padding: 8px 16px;
+  background: linear-gradient(to right, #f3f4f6, #f9fafb);
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  margin-left: 16px;
+  transition: all 0.3s ease;
+}
+
+.spin {
+  animation: spin 1.2s linear infinite;
+  color: #3b82f6;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Update expense list header to accommodate loading indicator better */
+.expense-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .app-container {
@@ -1188,10 +1230,13 @@
           gap: 8px;
           font-size: 14px;
           color: #6b7280;
-          padding: 8px 12px;
-          background-color: #f3f4f6;
-          border-radius: 6px;
+          padding: 8px 16px;
+          background: linear-gradient(to right, #f3f4f6, #f9fafb);
+          border: 1px solid #e5e7eb;
+          border-radius: 20px;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
           margin-left: 16px;
+          transition: all 0.3s ease;
         }
         
         .spin {
