@@ -540,24 +540,18 @@ const deleteExpense = async (id) => {
             
             {/* Sync Status for authenticated users */}
             {isAuthenticated && (
-              <div style={{ 
-                position: 'absolute', 
-                right: '280px', 
-                top: '50%', 
-                transform: 'translateY(-50%)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '14px'
-              }}>
-                {syncStatus === 'loading' && <RefreshCw className="spin" size={16} />}
-                {syncStatus === 'success' && <Cloud size={16} color="#10b981" />}
-                {syncStatus === 'error' && <CloudOff size={16} color="#ef4444" />}
+              <div className="sync-status-mobile">
+                {syncStatus === 'loading' && <RefreshCw className="spin" size={14} />}
+                {syncStatus === 'success' && <Cloud size={14} color="#10b981" />}
+                {syncStatus === 'error' && <CloudOff size={14} color="#ef4444" />}
                 
                 {lastSyncTime && (
-                  <div style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px' }}>
-                    Last sync: {lastSyncTime.toLocaleTimeString()}
-                  </div>
+                  <span>
+                    Last sync: {lastSyncTime.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
                 )}
               </div>
             )}

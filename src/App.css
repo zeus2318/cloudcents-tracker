@@ -885,6 +885,33 @@
   }
 }
 
+/* Add these styles to your App.css */
+.sync-status-mobile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Media query for mobile devices */
+@media (max-width: 768px) {
+  .sync-status-mobile {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 100;
+  }
+  
+  .header-content {
+    position: relative;
+  }
+}
+
 @media (max-width: 480px) {
   .header-content {
     flex-direction: column;
