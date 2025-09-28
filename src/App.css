@@ -421,15 +421,19 @@
 }
 
 .form-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
+  gap: 8px;
 }
 
 .flex-grow {
@@ -458,36 +462,53 @@
 }
 
 .form-input, .form-select {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  transition: all 0.2s;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background-color: #fff;
 }
 
 .form-input:focus, .form-select:focus {
   outline: none;
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
 }
 
 .add-button {
-  background: linear-gradient(135deg, #ec4899 0%, #9333ea 100%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #a855f7;
   color: white;
-  padding: 0.5rem 1.5rem;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 6px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .add-button:hover {
-  background: linear-gradient(135deg, #db2777 0%, #7c3aed 100%);
+  background-color: #9333ea;
+}
+
+.add-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error States */
+.error {
+  border-color: #ef4444;
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 4px;
 }
 
 /* Content Grid */
@@ -882,6 +903,72 @@
   .edit-modal-content {
     margin: 0.5rem;
     padding: 1.5rem;
+  }
+}
+
+/* Mobile Responsive Form */
+@media (max-width: 768px) {
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 12px;
+  }
+
+  .form-group {
+    width: 100%;
+  }
+
+  .flex-grow,
+  .amount-input,
+  .category-input,
+  .date-input {
+    width: 100%;
+  }
+
+  .form-input,
+  .form-select {
+    height: 44px; /* Larger touch targets */
+    font-size: 16px; /* Prevent auto-zoom on iOS */
+    padding: 10px 12px;
+  }
+
+  /* Adjust button for mobile */
+  .add-button {
+    width: 100%;
+    height: 44px;
+    justify-content: center;
+    margin-top: 8px;
+    font-size: 16px;
+  }
+
+  /* Adjust input labels */
+  .form-label {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  /* Stack form groups */
+  .form-group {
+    margin-bottom: 12px;
+  }
+
+  /* Adjust category select */
+  .form-select {
+    width: 100%;
+    background-position: right 12px center;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+  .form-row {
+    padding: 8px;
+  }
+
+  .controls-section {
+    padding: 12px;
+    margin: 8px;
   }
 }
 
