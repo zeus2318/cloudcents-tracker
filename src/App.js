@@ -391,7 +391,7 @@ const deleteExpense = async (id) => {
     const summary = {};
     
     Object.keys(categories).forEach(cat => {
-      summary[cat] = filteredExpenses
+  summary[cat] = filteredExpenses
         .filter(expense => expense.category === cat)
         .reduce((total, expense) => total + expense.amount, 0);
     });
