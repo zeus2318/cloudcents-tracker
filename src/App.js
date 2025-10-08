@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PlusCircle, DollarSign, TrendingUp, Calendar, Download, Trash2, Edit3, User, LogOut, Lock, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/api';
-import awsconfig from './aws-exports.js'; // or ./aws-exports.js if you prefer
+import awsconfig from './aws-exports.js';
 import * as queries from './graphql/queries.js';
 import * as mutations from './graphql/mutations.js';
 import './App.css';
